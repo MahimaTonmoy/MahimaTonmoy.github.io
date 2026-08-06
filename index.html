@@ -63,6 +63,17 @@
   }
   section.alt{ background:var(--paper2); }
 
+  /* ================= SECTION FADE-IN ================= */
+  section{
+    opacity:0;
+    transform:translateY(28px);
+    transition:opacity 0.65s ease, transform 0.65s ease;
+  }
+  section.visible{
+    opacity:1;
+    transform:translateY(0);
+  }
+
   .stamp{
     display:inline-block;
     border:2px dashed var(--accent);
@@ -784,6 +795,10 @@
 
 <canvas id="confettiCanvas"></canvas>
 
+<audio id="bgMusic" preload="auto">
+  <source src="bg-music.mp3" type="audio/mpeg">
+</audio>
+
 <div id="photoLightbox" onclick="closeLightbox(event)">
   <button class="closeBtn" onclick="closeLightbox(event)">&times;</button>
   <img id="lightboxImg" src="" alt="photo enlarged" onclick="event.stopPropagation()">
@@ -924,24 +939,62 @@ function launchConfetti(){
   draw();
 }
 
+/* ================= NO BUTTON — ENHANCED DODGE ================= */
+let dodgeCount = 0;
+const panicMessages = ["please no 🥺", "noo stop 😰", "i'm scared 😱", "please i beg 🙏"];
+
 function dodge(btn){
+  dodgeCount++;
+
+  const scale = Math.max(0.45, 1 - (dodgeCount - 1) * 0.14);
+
+  if(dodgeCount >= 5){
+    btn.style.transition = "transform 0.35s ease, opacity 0.35s ease";
+    btn.style.transform = "scale(0)";
+    btn.style.opacity = "0";
+    setTimeout(() => {
+      btn.style.display = "none";
+      const msg = document.createElement("span");
+      msg.textContent = "gone 💨";
+      msg.style.cssText = "font-family:'Caveat',cursive;font-size:22px;color:var(--accent);";
+      btn.parentElement.appendChild(msg);
+    }, 350);
+    return;
+  }
+
   const row = btn.parentElement.getBoundingClientRect();
-  const maxX = row.width - btn.offsetWidth - 10;
-  const maxY = 20;
-  const x = Math.random() * maxX - maxX/2;
-  const y = Math.random() * maxY - maxY/2;
+  const maxX = row.width - 10;
+  const x = (Math.random() - 0.5) * maxX;
+  const y = (Math.random() - 0.5) * 40;
   btn.style.position = "relative";
-  btn.style.transform = `translate(${x}px, ${y}px)`;
+  btn.style.transition = "transform 0.15s ease";
+  btn.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+  btn.textContent = panicMessages[dodgeCount - 1] || "No";
 }
 
 /* ================= PIN LOCK ================= */
 const CORRECT_PIN = "1530";
+
+/* ================= BACKGROUND MUSIC (19s → 1:30 loop) ================= */
+function startMusic(){
+  const audio = document.getElementById('bgMusic');
+  audio.volume = 0.35;
+  audio.currentTime = 19;
+  audio.play().catch(() => {});
+
+  audio.addEventListener('timeupdate', function(){
+    if(audio.currentTime >= 90){
+      audio.currentTime = 19;
+    }
+  });
+}
 
 function checkPin(){
   const val = document.getElementById('pinInput').value.trim();
   if (val === CORRECT_PIN){
     document.body.classList.remove('locked');
     document.getElementById('pinLock').style.display = 'none';
+    startMusic();
   } else {
     document.getElementById('pinError').style.display = 'block';
     const input = document.getElementById('pinInput');
@@ -1000,11 +1053,38 @@ document.addEventListener("click", (e) => {
   spawnHeart(e.clientX, e.clientY);
 });
 
+/* ================= SECTION FADE-IN ON SCROLL ================= */
+function initSectionObserver(){
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if(entry.isIntersecting){
+        entry.target.classList.add("visible");
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  document.querySelectorAll("section").forEach(sec => observer.observe(sec));
+}
+
+// Run after unlock so sections in view get their initial .visible class
+const _origCheckPin = checkPin;
+checkPin = function(){
+  _origCheckPin();
+  if(!document.body.classList.contains("locked")){
+    initSectionObserver();
+  }
+};
+
+// Also run on page load in case page is viewed without a lock
+if(!document.body.classList.contains("locked")){
+  initSectionObserver();
+}
+
 
 </script>
 
 
 
 
-</body>
+<script src="https://replit-cdn.com/replit-pill/replit-pill.global.js" data-repl-id="ef08a7df-1481-42ba-8705-3d9aeac49fb9"></script></body>
 </html>
